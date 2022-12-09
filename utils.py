@@ -12,7 +12,6 @@ def sign(x, eps=1e-15):
         return 1
     else:
         return -1
-# 根据二分计算数值积分
 def budget_constraint(budget, f, v_min, v_max, g, eps = 1e-15):
     '''
     :param budget: bidder's budget target
@@ -37,7 +36,6 @@ def budget_constraint(budget, f, v_min, v_max, g, eps = 1e-15):
             l = mid
     return r
 
-# 利用二分求满足ROI的系数
 def ROI_constraint(roi, f, v_min, v_max, g, eps = 1e-15):
     '''
     :param roi: bidder's ROI target
@@ -47,9 +45,6 @@ def ROI_constraint(roi, f, v_min, v_max, g, eps = 1e-15):
     :param g: the maximum bid formulated by other bidders except for bidder
     :return: the coefficient beta
     '''
-    # 0 表示 满足 精度条件
-    # 1 表示
-    # 2 表示
     def helper(f, v_min, v_max, g, mid, roi, eps = 1e-15):
         h = lambda D, v: ((1 + roi) * D - v) * g(D) * f(v)
         tmp = integrate.dblquad(h, v_min, v_max, lambda x : 0, lambda x : mid * x)[0]
@@ -99,10 +94,8 @@ def get_coeff(data, v_min, v_max, f, g, is_ironing = False):
         data[['beta_budget', 'beta_roi', 'beta']] = data.apply(lambda x:helper(x, v_min, v_max, f, g), axis = 1, result_type = 'expand')
         return data
     else:
-        # 如果使用ironing
         _, ironing_points = ironing(f, v_min, v_max, g)
         def helper(x, v_min, v_max, f, g, ironing_points):
-            # 找出上下两个边界点，然后根据边界点计算概率 (beta_1, beta_2, u)
             beta_budget = budget_constraint(x.budget, f, v_min, v_max, g)
             beta_roi = ROI_constraint(x.roi, f, v_min, v_max, g)
             beta = min(beta_budget, beta_roi)
@@ -138,18 +131,13 @@ def sample(budget_min, budget_max, roi_min, roi_max, nums):
     :param roi_max:
     :return: (id, budget, roi) # 直接把参数计算出来
     '''
-    #如果使用ironing
     data = pd.DataFrame(np.arange(nums), columns = ['id'])
     data[['budget', 'roi']] = data.apply(lambda x : (np.random.uniform(budget_min, budget_max), np.random.uniform(roi_min, roi_max)), axis = 1, result_type='expand')
     return data
 
 
 
-# 根据所有的点对关系，返回上半部分凸包
-# Andrew 算法寻找上凸壳
-
 def find_curve(points):
-    # 计算点a, b的叉乘, 叉乘大于0表示向量ac在向量ab的右边，等于零表示共线，小于0表示ac在ab左边
     def cross(a, b, c):
         x = (b[0] - a[0], b[1] - a[1])
         y = (c[0] - a[0], c[1] - a[1])
@@ -164,16 +152,13 @@ def find_curve(points):
 
 def ironing(f, v_min, v_max, g):
     def helper(beta, f, v_min, v_max, g):
-        # 计算给定beta下的payment，以及roi
         h = lambda D, v: D * g(D) * f(v)
         l = lambda D, v: v * g(D) * f(v)
         payment = integrate.dblquad(h, v_min, v_max, lambda x : 0, lambda x : beta * x)[0]
         value = integrate.dblquad(l, v_min, v_max, lambda x : 0, lambda x : beta * x)[0]
         return [payment, value]
-    #1. 计算原来的ROI, budget曲线
     x = np.linspace(0.001, 1, 100)
     points = pd.Series(x).apply(lambda x : helper(x, f, v_min, v_max, g)).values.tolist()
-    #2. 计算凸包，并且计算ironing后的曲线
     ironing_points = find_curve(points)
     return points, ironing_points
 
